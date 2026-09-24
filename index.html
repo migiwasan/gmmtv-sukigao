@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>好き顔ソート</title>
+
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+  <main class="container">
+
+    <header>
+      <h1>好き顔ソート</h1>
+      <p id="phaseText">読み込み中…</p>
+      <div class="progress">
+        <div id="progressBar"></div>
+      </div>
+      <p id="progressText"></p>
+    </header>
+
+
+    <!-- 比較画面 -->
+    <section id="compareScreen">
+
+      <div class="faces">
+
+        <button class="face-card" id="leftButton">
+          <img id="leftImage" src="" alt="">
+        </button>
+
+        <div class="vs">VS</div>
+
+        <button class="face-card" id="rightButton">
+          <img id="rightImage" src="" alt="">
+        </button>
+
+      </div>
+
+
+      <div class="choice-buttons">
+
+        <button id="leftChoice">
+          ← 左が好き
+        </button>
+
+        <button id="bothChoice">
+          ♡ どっちも好き
+        </button>
+
+        <button id="neitherChoice">
+          × どっちも好きじゃない
+        </button>
+
+        <button id="rightChoice">
+          右が好き →
+        </button>
+
+      </div>
+
+    </section>
+
+
+    <!-- 結果画面 -->
+    <section id="resultScreen" class="hidden">
+
+      <h2 id="resultTitle">あなたの好き顔 TOP9</h2>
+
+      <p id="resultDescription"></p>
+
+      <div id="rankingGrid"></div>
+
+      <div class="result-buttons">
+
+        <button id="refineButton" class="main-button">
+          TOP9をもっと厳密にする（＋30回）
+        </button>
+
+        <button id="resetButton" class="sub-button">
+          最初からやり直す
+        </button>
+
+      </div>
+
+    </section>
+
+  </main>
+
+
+  <script src="script.js"></script>
+
+</body>
+</html>
