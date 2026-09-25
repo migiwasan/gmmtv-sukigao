@@ -1,1347 +1,1366 @@
-/* =========================================================
-   好き顔ソート
-   ========================================================= */
+// ========================================
+// GMMTV好き顔ソート~mens~
+// ========================================
 
-
-// ================================
-// 基本設定
-// ================================
-
-const NORMAL_COMPARISONS = 100;
+// ---------- 設定 ----------
+const BASE_COMPARISONS = 100;
 const REFINE_COMPARISONS = 30;
 
-const TOTAL_PEOPLE = people.length;
-
-// 第2フェーズでは上位20人を中心に比較
 const PHASE2_CANDIDATES = 20;
-
-// 精密比較では上位15人に絞る
 const REFINE_CANDIDATES = 15;
 
-
-// Elo風スコア
 const INITIAL_SCORE = 1500;
 const K_FACTOR = 32;
 
-
-// 「どっちも好き」
+// 「両方好き」「どちらも好きではない」の補正
 const BOTH_BONUS = 8;
-
-// 「どっちも好きじゃない」
 const NEITHER_PENALTY = 8;
 
+// 新しい保存データとして扱うためのキー
+const STATE_KEY = "gmmtv-sukigao-state-v2";
 
-// ================================
-// データ
-// ================================
 
+// ---------- データ ----------
 let people = [];
+let peopleById = new Map();
 
 let scores = {};
-
 let comparisonCounts = {};
-
 let comparisonHistory = {};
 
-let currentPair = null;
+let phase1Pairs = [];
 
+let currentPair = null;
 let currentComparison = 0;
+
+let normalTarget = BASE_COMPARISONS;
+
+let mode = "normal";
+// normal
+// refine
+// result
+
+let refinementStart = 0;
+let refinementTarget = null;
 
 let isProcessing = false;
 
 
-// ================================
-// DOM
-// ================================
+// ---------- HTML要素 ----------
+const compareScreen = document.getElementById("compareScreen");
+const resultScreen = document.getElementById("resultScreen");
 
-const compareScreen =
-  document.getElementById("compareScreen");
+const leftImage = document.getElementById("leftImage");
+const rightImage = document.getElementById("rightImage");
 
-const resultScreen =
-  document.getElementById("resultScreen");
+const leftName = document.getElementById("leftName");
+const rightName = document.getElementById("rightName");
 
-const leftImage =
-  document.getElementById("leftImage");
+const progressBar = document.getElementById("progressBar");
+const progressText = document.getElementById("progressText");
+const phaseText = document.getElementById("phaseText");
 
-const rightImage =
-  document.getElementById("rightImage");
+const rankingGrid = document.getElementById("rankingGrid");
 
-const progressBar =
-  document.getElementById("progressBar");
+const bothButton = document.getElementById("bothButton");
+const neitherButton = document.getElementById("neitherButton");
 
-const progressText =
-  document.getElementById("progressText");
-
-const phaseText =
-  document.getElementById("phaseText");
-
-const rankingGrid =
-  document.getElementById("rankingGrid");
-
-const resultTitle =
-  document.getElementById("resultTitle");
-
-const resultDescription =
-  document.getElementById("resultDescription");
-
-const refineButton =
-  document.getElementById("refineButton");
-
-const resetButton =
-  document.getElementById("resetButton");
+const refineButton = document.getElementById("refineButton");
+const resetButton = document.getElementById("resetButton");
 
 
-// ================================
+// ========================================
 // CSV読み込み
-// ================================
-
-async function loadPeople() {
-
-  const response = await fetch("people.csv");
-
-  if (!response.ok) {
-    throw new Error("people.csvを読み込めませんでした");
-  }
-
-  const text = await response.text();
-
-  people = parseCSV(text);
-
-  if (people.length !== TOTAL_PEOPLE) {
-
-    alert(
-      `people.csvには${TOTAL_PEOPLE}人必要です。\n` +
-      `現在は${people.length}人です。`
-    );
-
-    throw new Error("人数が100人ではありません");
-  }
-
-
-  initializeData();
-
-  loadSavedData();
-
-  updateScreen();
-
-  if (currentComparison >= NORMAL_COMPARISONS) {
-
-    showResult();
-
-  } else {
-
-    showNextComparison();
-  }
-}
-
-
-// ================================
-// CSV parser
-// ================================
+// ========================================
 
 function parseCSV(text) {
+    text = text.replace(/^\uFEFF/, "");
 
-  const lines =
-    text
-      .trim()
-      .split(/\r?\n/);
+    const rows = [];
+    let row = [];
+    let cell = "";
+    let inQuotes = false;
 
-  const headers =
-    lines.shift()
-      .split(",")
-      .map(x => x.trim());
+    for (let i = 0; i < text.length; i++) {
+        const char = text[i];
+        const next = text[i + 1];
 
+        if (char === '"') {
+            if (inQuotes && next === '"') {
+                cell += '"';
+                i++;
+            } else {
+                inQuotes = !inQuotes;
+            }
+        }
 
-  return lines.map(line => {
+        else if (char === "," && !inQuotes) {
+            row.push(cell.trim());
+            cell = "";
+        }
 
-    const values = [];
+        else if ((char === "\n" || char === "\r") && !inQuotes) {
+            if (char === "\r" && next === "\n") {
+                i++;
+            }
 
-    let current = "";
-    let insideQuotes = false;
+            row.push(cell.trim());
+            cell = "";
 
+            if (row.some(value => value !== "")) {
+                rows.push(row);
+            }
 
-    for (let i = 0; i < line.length; i++) {
+            row = [];
+        }
 
-      const char = line[i];
-
-      if (char === '"') {
-
-        insideQuotes = !insideQuotes;
-
-      } else if (
-        char === "," &&
-        !insideQuotes
-      ) {
-
-        values.push(current.trim());
-
-        current = "";
-
-      } else {
-
-        current += char;
-      }
+        else {
+            cell += char;
+        }
     }
 
-    values.push(current.trim());
+    if (cell !== "" || row.length > 0) {
+        row.push(cell.trim());
 
-
-    const person = {};
-
-    headers.forEach((header, index) => {
-
-      person[header] =
-        values[index] || "";
-
-    });
-
-    return person;
-  });
-}
-
-
-// ================================
-// 初期データ
-// ================================
-
-function initializeData() {
-
-  scores = {};
-
-  comparisonCounts = {};
-
-  comparisonHistory = {};
-
-  people.forEach(person => {
-
-    scores[person.id] = INITIAL_SCORE;
-
-    comparisonCounts[person.id] = 0;
-
-  });
-}
-
-
-// ================================
-// localStorage
-// ================================
-
-function saveData() {
-
-  const data = {
-
-    scores,
-    comparisonCounts,
-    comparisonHistory,
-    currentComparison
-
-  };
-
-  localStorage.setItem(
-    "sukigao-sort-data",
-    JSON.stringify(data)
-  );
-}
-
-
-function loadSavedData() {
-
-  const saved =
-    localStorage.getItem(
-      "sukigao-sort-data"
-    );
-
-  if (!saved) {
-    return;
-  }
-
-
-  try {
-
-    const data =
-      JSON.parse(saved);
-
-
-    if (
-      data.scores &&
-      data.comparisonCounts
-    ) {
-
-      scores =
-        data.scores;
-
-      comparisonCounts =
-        data.comparisonCounts;
-
-      comparisonHistory =
-        data.comparisonHistory || {};
-
-      currentComparison =
-        data.currentComparison || 0;
+        if (row.some(value => value !== "")) {
+            rows.push(row);
+        }
     }
 
-  } catch (error) {
+    if (rows.length < 2) {
+        throw new Error("people.csvにデータがありません");
+    }
 
-    console.log(
-      "保存データを読み込めませんでした",
-      error
-    );
-  }
+    const headers = rows[0].map(header => header.trim());
+
+    const idIndex = headers.indexOf("id");
+    const nameIndex = headers.indexOf("name");
+    const imageIndex = headers.indexOf("image");
+
+    if (idIndex === -1 || nameIndex === -1 || imageIndex === -1) {
+        throw new Error(
+            "people.csvには「id,name,image」の3列が必要です"
+        );
+    }
+
+    return rows.slice(1).map(row => ({
+        id: row[idIndex] || "",
+        name: row[nameIndex] || "",
+        image: row[imageIndex] || ""
+    }));
 }
 
 
-// ================================
-// ペアキー
-// ================================
-
-function getPairKey(id1, id2) {
-
-  return [id1, id2]
-    .sort()
-    .join("__");
-}
-
-
-// ================================
-// ペアの比較回数
-// ================================
-
-function getPairCount(id1, id2) {
-
-  const key =
-    getPairKey(id1, id2);
-
-  return comparisonHistory[key] || 0;
-}
-
-
-// ================================
-// ペア比較回数を増やす
-// ================================
-
-function recordPair(id1, id2) {
-
-  const key =
-    getPairKey(id1, id2);
-
-  comparisonHistory[key] =
-    (comparisonHistory[key] || 0) + 1;
-}
-
-
-// ================================
+// ========================================
 // シャッフル
-// ================================
+// ========================================
 
 function shuffle(array) {
+    const result = [...array];
 
-  const result =
-    [...array];
+    for (let i = result.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
 
-  for (
-    let i = result.length - 1;
-    i > 0;
-    i--
-  ) {
+        [result[i], result[j]] = [result[j], result[i]];
+    }
 
-    const j =
-      Math.floor(
-        Math.random() * (i + 1)
-      );
-
-    [
-      result[i],
-      result[j]
-    ] = [
-      result[j],
-      result[i]
-    ];
-  }
-
-  return result;
+    return result;
 }
 
 
-// ================================
-// 第1フェーズ用ペア
-//
-// 100人をシャッフルして
-// 50組作る
-// →全員が必ず1回比較される
-// ================================
-
-let phase1Pairs = [];
+// ========================================
+// 初回比較ペア作成
+// 全員が最低1回は登場する
+// ========================================
 
 function createPhase1Pairs() {
+    const ids = shuffle(people.map(person => person.id));
 
-  const shuffled =
-    shuffle(people);
+    const pairs = [];
 
-  phase1Pairs = [];
+    for (let i = 0; i + 1 < ids.length; i += 2) {
+        pairs.push([
+            ids[i],
+            ids[i + 1]
+        ]);
+    }
 
-  for (
-    let i = 0;
-    i < shuffled.length;
-    i += 2
-  ) {
+    // 人数が奇数の場合
+    // 最後の1人をランダムな誰かと組ませる
+    if (ids.length % 2 === 1) {
+        const lastId = ids[ids.length - 1];
 
-    phase1Pairs.push([
-      shuffled[i],
-      shuffled[i + 1]
-    ]);
-  }
+        const opponentIndex =
+            Math.floor(Math.random() * (ids.length - 1));
+
+        const opponentId = ids[opponentIndex];
+
+        pairs.push([
+            lastId,
+            opponentId
+        ]);
+    }
+
+    return pairs;
 }
 
 
-// ================================
-// 第2フェーズ / 精密比較
-// の候補者取得
-// ================================
+// ========================================
+// 人数に応じた比較回数
+// ========================================
 
-function getTopCandidates(count) {
+function calculateNormalTarget() {
+    const minimumForEveryone =
+        Math.ceil(people.length / 2);
 
-  return [...people]
-    .sort(
-      (a, b) =>
-        scores[b.id] -
-        scores[a.id]
-    )
-    .slice(0, count);
+    // 121人なら
+    // ceil(121 / 2) = 61
+    // → 100回比較する
+    //
+    // 201人なら
+    // ceil(201 / 2) = 101
+    // → 全員登場のため101回
+    return Math.max(
+        BASE_COMPARISONS,
+        minimumForEveryone
+    );
 }
 
 
-// ================================
-// 次に比較するペアを探す
-//
-// ・スコアが近い
-// ・まだ比較していない
-// ・比較回数が少ない
-//
-// を優先
-// ================================
+// ========================================
+// ペア識別
+// ========================================
+
+function getPairKey(id1, id2) {
+    return [id1, id2]
+        .sort()
+        .join("__");
+}
+
+
+function getPairCount(id1, id2) {
+    const key = getPairKey(id1, id2);
+
+    return comparisonHistory[key] || 0;
+}
+
+
+function recordPair(id1, id2) {
+    const key = getPairKey(id1, id2);
+
+    comparisonHistory[key] =
+        (comparisonHistory[key] || 0) + 1;
+}
+
+
+// ========================================
+// スコア差が近く、まだ比較していない人を優先
+// ========================================
 
 function findBestPair(candidates) {
-
-  const pairs = [];
-
-
-  for (
-    let i = 0;
-    i < candidates.length;
-    i++
-  ) {
-
-    for (
-      let j = i + 1;
-      j < candidates.length;
-      j++
-    ) {
-
-      const a =
-        candidates[i];
-
-      const b =
-        candidates[j];
-
-
-      const count =
-        getPairCount(
-          a.id,
-          b.id
-        );
-
-
-      const scoreDifference =
-        Math.abs(
-          scores[a.id] -
-          scores[b.id]
-        );
-
-
-      /*
-       * 未比較ペアをかなり優先。
-       *
-       * 同じ回数なら
-       * スコアが近いペアを優先。
-       */
-
-      const priority =
-        count * 10000 +
-        scoreDifference;
-
-
-      pairs.push({
-        a,
-        b,
-        priority,
-        count
-      });
+    if (candidates.length < 2) {
+        return null;
     }
-  }
 
+    const possiblePairs = [];
 
-  pairs.sort(
-    (x, y) =>
-      x.priority -
-      y.priority
-  );
+    for (let i = 0; i < candidates.length; i++) {
+        for (let j = i + 1; j < candidates.length; j++) {
+            const a = candidates[i];
+            const b = candidates[j];
 
+            const pairCount =
+                getPairCount(a.id, b.id);
 
-  if (pairs.length === 0) {
-    return null;
-  }
+            const scoreDifference =
+                Math.abs(
+                    scores[a.id] - scores[b.id]
+                );
 
+            const individualCountDifference =
+                Math.abs(
+                    (comparisonCounts[a.id] || 0) -
+                    (comparisonCounts[b.id] || 0)
+                );
 
-  /*
-   * 完全に同順位の候補ばかりにならないよう、
-   * 上位数組からランダムに選ぶ。
-   */
+            /*
+             * 優先順位
+             *
+             * ① 同じ2人を何度も比較しない
+             * ② スコアが近い人同士
+             * ③ 比較回数の偏りが少ない
+             */
+            const priority =
+                pairCount * 100000 +
+                scoreDifference +
+                individualCountDifference * 0.1;
 
-  const minimumPriority =
-    pairs[0].priority;
+            possiblePairs.push({
+                a,
+                b,
+                priority
+            });
+        }
+    }
 
-  const closePairs =
-    pairs.filter(
-      pair =>
-        pair.priority <=
-        minimumPriority + 30
+    possiblePairs.sort(
+        (x, y) => x.priority - y.priority
     );
 
+    // 完全に同点の場合に少しランダム性を入れる
+    const topCount =
+        Math.min(8, possiblePairs.length);
 
-  const selected =
-    closePairs[
-      Math.floor(
-        Math.random() *
-        closePairs.length
-      )
+    const selected =
+        possiblePairs[
+            Math.floor(Math.random() * topCount)
+        ];
+
+    return [
+        selected.a,
+        selected.b
     ];
-
-
-  return [
-    selected.a,
-    selected.b
-  ];
 }
 
 
-// ================================
+// ========================================
+// 初期スコア
+// ========================================
+
+function initializeScores() {
+    scores = {};
+    comparisonCounts = {};
+    comparisonHistory = {};
+
+    people.forEach(person => {
+        scores[person.id] = INITIAL_SCORE;
+        comparisonCounts[person.id] = 0;
+    });
+}
+
+
+// ========================================
+// スコア計算
+// ========================================
+
+function applyChoice(choice) {
+    if (!currentPair) {
+        return;
+    }
+
+    const left = currentPair[0];
+    const right = currentPair[1];
+
+    if (choice === "left") {
+        updateElo(left.id, right.id, 1);
+    }
+
+    else if (choice === "right") {
+        updateElo(right.id, left.id, 1);
+    }
+
+    else if (choice === "both") {
+        scores[left.id] += BOTH_BONUS;
+        scores[right.id] += BOTH_BONUS;
+    }
+
+    else if (choice === "neither") {
+        scores[left.id] -= NEITHER_PENALTY;
+        scores[right.id] -= NEITHER_PENALTY;
+    }
+}
+
+
+// ========================================
+// Elo方式
+// ========================================
+
+function updateElo(winnerId, loserId, result) {
+    const winnerScore = scores[winnerId];
+    const loserScore = scores[loserId];
+
+    const expectedWinner =
+        1 /
+        (
+            1 +
+            Math.pow(
+                10,
+                (loserScore - winnerScore) / 400
+            )
+        );
+
+    const change =
+        K_FACTOR *
+        (result - expectedWinner);
+
+    scores[winnerId] += change;
+    scores[loserId] -= change;
+}
+
+
+// ========================================
+// 比較回数カウント
+// ========================================
+
+function recordComparison() {
+    if (!currentPair) {
+        return;
+    }
+
+    const left = currentPair[0];
+    const right = currentPair[1];
+
+    comparisonCounts[left.id] =
+        (comparisonCounts[left.id] || 0) + 1;
+
+    comparisonCounts[right.id] =
+        (comparisonCounts[right.id] || 0) + 1;
+
+    recordPair(left.id, right.id);
+}
+
+
+// ========================================
+// 現在のランキング
+// ========================================
+
+function getRanking() {
+    return [...people].sort((a, b) => {
+        const scoreDifference =
+            scores[b.id] - scores[a.id];
+
+        if (scoreDifference !== 0) {
+            return scoreDifference;
+        }
+
+        return (
+            (comparisonCounts[a.id] || 0) -
+            (comparisonCounts[b.id] || 0)
+        );
+    });
+}
+
+
+// ========================================
+// 比較対象を決める
+// ========================================
+
+function chooseNextPair() {
+    // ----------------------------
+    // 通常モード
+    // ----------------------------
+
+    if (mode === "normal") {
+
+        // 最初は全員を最低1回登場させる
+        if (currentComparison < phase1Pairs.length) {
+
+            const ids =
+                phase1Pairs[currentComparison];
+
+            const left =
+                peopleById.get(ids[0]);
+
+            const right =
+                peopleById.get(ids[1]);
+
+            if (left && right) {
+                return [left, right];
+            }
+        }
+
+        // それ以降は上位候補を重点比較
+        const ranking = getRanking();
+
+        const candidateCount =
+            Math.min(
+                PHASE2_CANDIDATES,
+                ranking.length
+            );
+
+        const candidates =
+            ranking.slice(0, candidateCount);
+
+        return findBestPair(candidates);
+    }
+
+
+    // ----------------------------
+    // 精密モード
+    // ----------------------------
+
+    if (mode === "refine") {
+
+        const ranking = getRanking();
+
+        const candidateCount =
+            Math.min(
+                REFINE_CANDIDATES,
+                ranking.length
+            );
+
+        const candidates =
+            ranking.slice(0, candidateCount);
+
+        return findBestPair(candidates);
+    }
+
+
+    return null;
+}
+
+
+// ========================================
 // 次の比較を表示
-// ================================
+// ========================================
 
 function showNextComparison() {
 
-  let pair;
+    const pair = chooseNextPair();
+
+    if (!pair) {
+        showResult();
+        return;
+    }
+
+    currentPair = pair;
+
+    setFaceImage(
+        leftImage,
+        pair[0]
+    );
+
+    setFaceImage(
+        rightImage,
+        pair[1]
+    );
+
+    if (leftName) {
+        leftName.textContent = pair[0].name;
+    }
+
+    if (rightName) {
+        rightName.textContent = pair[1].name;
+    }
+
+    updateProgress();
+}
 
 
-  // ------------------------------
-  // 1～50回
-  // ------------------------------
+// ========================================
+// 画像設定
+// ========================================
 
-  if (currentComparison < 50) {
+function setFaceImage(element, person) {
 
-    if (phase1Pairs.length === 0) {
+    if (!element) {
+        return;
+    }
 
-      createPhase1Pairs();
+    element.alt = person.name;
+
+    element.onerror = function () {
+
+        // 無限ループ防止
+        element.onerror = null;
+
+        // 画像がなかった場合の簡易表示
+        element.src =
+            "data:image/svg+xml;charset=UTF-8," +
+            encodeURIComponent(
+                `
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="600"
+                    height="800"
+                >
+                    <rect
+                        width="600"
+                        height="800"
+                        fill="#eeeeee"
+                    />
+                    <text
+                        x="300"
+                        y="370"
+                        text-anchor="middle"
+                        font-size="32"
+                        fill="#777777"
+                    >
+                        画像が見つかりません
+                    </text>
+                    <text
+                        x="300"
+                        y="430"
+                        text-anchor="middle"
+                        font-size="30"
+                        fill="#555555"
+                    >
+                        ${escapeXML(person.name)}
+                    </text>
+                </svg>
+                `
+            );
+    };
+
+    element.src =
+        `./images/${encodeURIComponent(person.image)}`;
+}
+
+
+function escapeXML(text) {
+    return String(text)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&apos;");
+}
+
+
+// ========================================
+// プログレス表示
+// ========================================
+
+function updateProgress() {
+
+    let completed;
+    let target;
+    let phase;
+
+    if (mode === "normal") {
+
+        completed = currentComparison;
+        target = normalTarget;
+
+        if (
+            currentComparison <
+            phase1Pairs.length
+        ) {
+            phase =
+                "全員をチェックしています";
+        } else {
+            phase =
+                "上位候補を絞り込んでいます";
+        }
+    }
+
+    else if (mode === "refine") {
+
+        completed =
+            currentComparison -
+            refinementStart;
+
+        target =
+            REFINE_COMPARISONS;
+
+        phase =
+            "TOP候補をさらに厳密に比較中";
+    }
+
+    else {
+        return;
     }
 
 
-    const index =
-      currentComparison;
-
-    pair =
-      phase1Pairs[index];
-
-  }
-
-
-  // ------------------------------
-  // 51～100回
-  // ------------------------------
-
-  else {
-
-    const candidates =
-      getTopCandidates(
-        PHASE2_CANDIDATES
-      );
+    const percent =
+        Math.min(
+            100,
+            Math.round(
+                (completed / target) * 100
+            )
+        );
 
 
-    pair =
-      findBestPair(
-        candidates
-      );
-  }
+    if (progressBar) {
+        progressBar.style.width =
+            `${percent}%`;
+    }
 
 
-  if (!pair) {
+    if (progressText) {
 
-    showResult();
+        if (mode === "refine") {
+            progressText.textContent =
+                `${Math.max(0, completed)} / ${REFINE_COMPARISONS} 回`;
+        }
 
-    return;
-  }
-
-
-  currentPair = pair;
-
-  recordPair(
-    pair[0].id,
-    pair[1].id
-  );
+        else {
+            progressText.textContent =
+                `${completed} / ${target} 回`;
+        }
+    }
 
 
-  comparisonCounts[
-    pair[0].id
-  ]++;
-
-  comparisonCounts[
-    pair[1].id
-  ]++;
-
-
-  leftImage.src =
-    `images/${pair[0].image}`;
-
-  rightImage.src =
-    `images/${pair[1].image}`;
-
-
-  leftImage.alt =
-    pair[0].name;
-
-  rightImage.alt =
-    pair[1].name;
-
-
-  updateScreen();
+    if (phaseText) {
+        phaseText.textContent = phase;
+    }
 }
 
 
-// ================================
-// 画面情報更新
-// ================================
-
-function updateScreen() {
-
-  let total =
-    NORMAL_COMPARISONS;
-
-  let phase =
-    "";
-
-
-  if (currentComparison < 50) {
-
-    phase =
-      "全員チェック中";
-
-  } else {
-
-    phase =
-      "TOP候補を絞り込み中";
-  }
-
-
-  phaseText.textContent =
-    phase;
-
-
-  progressText.textContent =
-    `${currentComparison} / ${total} 回`;
-
-
-  const percentage =
-    Math.min(
-      currentComparison /
-      total *
-      100,
-      100
-    );
-
-
-  progressBar.style.width =
-    `${percentage}%`;
-}
-
-
-// ================================
-// 勝敗処理
-// ================================
-
-function updateElo(
-  winnerId,
-  loserId
-) {
-
-  const winnerScore =
-    scores[winnerId];
-
-  const loserScore =
-    scores[loserId];
-
-
-  const expectedWinner =
-    1 /
-    (
-      1 +
-      Math.pow(
-        10,
-        (loserScore - winnerScore) / 400
-      )
-    );
-
-
-  const change =
-    K_FACTOR *
-    (1 - expectedWinner);
-
-
-  scores[winnerId] +=
-    change;
-
-  scores[loserId] -=
-    change;
-}
-
-
-// ================================
-// 選択結果
-// ================================
+// ========================================
+// 選択ボタン
+// ========================================
 
 function handleChoice(choice) {
 
-  if (
-    isProcessing ||
-    !currentPair
-  ) {
-    return;
-  }
-
-
-  isProcessing = true;
-
-
-  const left =
-    currentPair[0];
-
-  const right =
-    currentPair[1];
-
-
-  // ------------------------------
-  // 左が好き
-  // ------------------------------
-
-  if (choice === "left") {
-
-    updateElo(
-      left.id,
-      right.id
-    );
-  }
-
-
-  // ------------------------------
-  // 右が好き
-  // ------------------------------
-
-  else if (choice === "right") {
-
-    updateElo(
-      right.id,
-      left.id
-    );
-  }
-
-
-  // ------------------------------
-  // どっちも好き
-  // ------------------------------
-
-  else if (choice === "both") {
-
-    scores[left.id] +=
-      BOTH_BONUS;
-
-    scores[right.id] +=
-      BOTH_BONUS;
-  }
-
-
-  // ------------------------------
-  // どっちも好きじゃない
-  // ------------------------------
-
-  else if (choice === "neither") {
-
-    scores[left.id] -=
-      NEITHER_PENALTY;
-
-    scores[right.id] -=
-      NEITHER_PENALTY;
-  }
-
-
-  currentComparison++;
-
-  saveData();
-
-
-  setTimeout(() => {
-
-    isProcessing = false;
-
-
     if (
-      currentComparison >=
-      NORMAL_COMPARISONS
+        isProcessing ||
+        !currentPair ||
+        mode === "result"
     ) {
-
-      showResult();
-
-    } else {
-
-      showNextComparison();
+        return;
     }
 
-  }, 120);
+    isProcessing = true;
+
+
+    // スコアを更新
+    applyChoice(choice);
+
+    // 比較記録
+    recordComparison();
+
+    // 比較回数を進める
+    currentComparison++;
+
+
+    // 保存
+    saveState();
+
+
+    // 少しだけ間を置いて次へ
+    setTimeout(() => {
+
+        isProcessing = false;
+
+        // 精密比較終了
+        if (
+            mode === "refine" &&
+            currentComparison >= refinementTarget
+        ) {
+            showResult();
+            return;
+        }
+
+        // 通常比較終了
+        if (
+            mode === "normal" &&
+            currentComparison >= normalTarget
+        ) {
+            showResult();
+            return;
+        }
+
+        showNextComparison();
+
+    }, 120);
 }
 
 
-// ================================
+// ========================================
 // 結果表示
-// ================================
+// ========================================
 
 function showResult() {
 
-  compareScreen.classList.add(
-    "hidden"
-  );
+    mode = "result";
 
-  resultScreen.classList.remove(
-    "hidden"
-  );
+    currentPair = null;
 
+    if (compareScreen) {
+        compareScreen.style.display = "none";
+    }
 
-  const ranking =
-    [...people]
-      .sort(
-        (a, b) =>
-          scores[b.id] -
-          scores[a.id]
-      )
-      .slice(0, 9);
+    if (resultScreen) {
+        resultScreen.style.display = "block";
+    }
 
 
-  rankingGrid.innerHTML =
-    "";
+    const ranking = getRanking();
 
-
-  ranking.forEach(
-    (person, index) => {
-
-      const card =
-        document.createElement(
-          "div"
+    const topCount =
+        Math.min(
+            9,
+            ranking.length
         );
 
-      card.className =
-        "rank-card";
+    if (rankingGrid) {
 
+        rankingGrid.innerHTML = "";
 
-      card.innerHTML = `
+        ranking
+            .slice(0, topCount)
+            .forEach((person, index) => {
 
-        <div class="rank-number">
-          ${index + 1}
-        </div>
+                const card =
+                    document.createElement("div");
 
-        <img
-          src="images/${person.image}"
-          alt="${escapeHTML(person.name)}"
-        >
+                card.className =
+                    "ranking-card";
 
-        <div class="rank-name">
-          ${escapeHTML(person.name)}
-        </div>
+                const rank =
+                    document.createElement("div");
 
-      `;
+                rank.className =
+                    "ranking-number";
 
+                rank.textContent =
+                    `${index + 1}位`;
 
-      rankingGrid.appendChild(
-        card
-      );
+                const img =
+                    document.createElement("img");
+
+                setFaceImage(img, person);
+
+                img.alt =
+                    `${index + 1}位 ${person.name}`;
+
+                const name =
+                    document.createElement("div");
+
+                name.className =
+                    "ranking-name";
+
+                name.textContent =
+                    person.name;
+
+                card.appendChild(rank);
+                card.appendChild(img);
+                card.appendChild(name);
+
+                rankingGrid.appendChild(card);
+            });
     }
-  );
 
 
-  if (
-    currentComparison ===
-    NORMAL_COMPARISONS
-  ) {
+    // 精密比較ボタン
+    if (refineButton) {
 
-    resultTitle.textContent =
-      "あなたの好き顔 TOP9";
+        refineButton.style.display =
+            ranking.length >= 2
+                ? "block"
+                : "none";
 
+        if (
+            currentComparison <= normalTarget
+        ) {
+            refineButton.textContent =
+                "TOP9をもっと厳密にする（＋30回）";
+        }
 
-    resultDescription.textContent =
-      "100回の比較から選ばれた9人です。";
-
-    refineButton.textContent =
-      "TOP9をもっと厳密にする（＋30回）";
-
-    refineButton.style.display =
-      "block";
-
-  } else {
-
-    resultTitle.textContent =
-      "あなたの好き顔 TOP9";
+        else {
+            refineButton.textContent =
+                "さらに＋30回比較する";
+        }
+    }
 
 
-    resultDescription.textContent =
-      `追加比較を含む${currentComparison}回の比較結果です。`;
-
-
-    refineButton.textContent =
-      "さらに＋30回比較する";
-
-
-    refineButton.style.display =
-      "block";
-  }
-
-
-  window.scrollTo({
-    top: 0,
-    behavior: "smooth"
-  });
+    saveState();
 }
 
 
-// ================================
+// ========================================
 // 精密比較開始
-// ================================
+// ========================================
 
 function startRefinement() {
 
-  compareScreen.classList.remove(
-    "hidden"
-  );
-
-  resultScreen.classList.add(
-    "hidden"
-  );
-
-
-  // 精密比較30回
-  //
-  // currentComparisonが100なら
-  // 100 → 130
-  //
-  // 130なら
-  // 130 → 160
-  //
-  // と追加できる。
-
-  const target =
-    currentComparison +
-    REFINE_COMPARISONS;
-
-
-  // 既存の比較回数とは別に
-  // 「精密モード中」の上限を保存
-
-  localStorage.setItem(
-    "sukigao-refinement-target",
-    target
-  );
-
-
-  phaseText.textContent =
-    "TOP9精密チェック中";
-
-
-  showRefinementComparison();
-}
-
-
-// ================================
-// 精密比較
-// ================================
-
-function showRefinementComparison() {
-
-  const target =
-    Number(
-      localStorage.getItem(
-        "sukigao-refinement-target"
-      )
-    );
-
-
-  if (
-    !target ||
-    currentComparison >= target
-  ) {
-
-    localStorage.removeItem(
-      "sukigao-refinement-target"
-    );
-
-    saveData();
-
-    showResult();
-
-    return;
-  }
-
-
-  const candidates =
-    getTopCandidates(
-      REFINE_CANDIDATES
-    );
-
-
-  const pair =
-    findBestPair(
-      candidates
-    );
-
-
-  if (!pair) {
-
-    showResult();
-
-    return;
-  }
-
-
-  currentPair =
-    pair;
-
-
-  recordPair(
-    pair[0].id,
-    pair[1].id
-  );
-
-
-  comparisonCounts[
-    pair[0].id
-  ]++;
-
-  comparisonCounts[
-    pair[1].id
-  ]++;
-
-
-  leftImage.src =
-    `images/${pair[0].image}`;
-
-  rightImage.src =
-    `images/${pair[1].image}`;
-
-
-  leftImage.alt =
-    pair[0].name;
-
-  rightImage.alt =
-    pair[1].name;
-
-
-  updateRefinementProgress();
-}
-
-
-// ================================
-// 精密比較の進捗
-// ================================
-
-function updateRefinementProgress() {
-
-  const target =
-    Number(
-      localStorage.getItem(
-        "sukigao-refinement-target"
-      )
-    );
-
-
-  const start =
-    target -
-    REFINE_COMPARISONS;
-
-
-  const completed =
-    currentComparison -
-    start;
-
-
-  const progress =
-    Math.min(
-      completed /
-      REFINE_COMPARISONS *
-      100,
-      100
-    );
-
-
-  phaseText.textContent =
-    "TOP9精密チェック中";
-
-
-  progressText.textContent =
-    `${Math.max(completed, 0)} / ${REFINE_COMPARISONS} 回`;
-
-  progressBar.style.width =
-    `${progress}%`;
-}
-
-
-// ================================
-// 精密モードの選択処理
-// ================================
-
-function handleRefinementChoice(choice) {
-
-  if (
-    isProcessing ||
-    !currentPair
-  ) {
-    return;
-  }
-
-
-  isProcessing = true;
-
-
-  const left =
-    currentPair[0];
-
-  const right =
-    currentPair[1];
-
-
-  if (choice === "left") {
-
-    updateElo(
-      left.id,
-      right.id
-    );
-
-  } else if (choice === "right") {
-
-    updateElo(
-      right.id,
-      left.id
-    );
-
-  } else if (choice === "both") {
-
-    scores[left.id] +=
-      BOTH_BONUS;
-
-    scores[right.id] +=
-      BOTH_BONUS;
-
-  } else if (choice === "neither") {
-
-    scores[left.id] -=
-      NEITHER_PENALTY;
-
-    scores[right.id] -=
-      NEITHER_PENALTY;
-  }
-
-
-  currentComparison++;
-
-  saveData();
-
-
-  setTimeout(() => {
-
-    isProcessing = false;
-
-    showRefinementComparison();
-
-  }, 120);
-}
-
-
-// ================================
-// XSS対策
-// ================================
-
-function escapeHTML(str) {
-
-  return String(str)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
-}
-
-
-// ================================
-// 通常モードのボタン
-// ================================
-
-document
-  .getElementById("leftChoice")
-  .addEventListener(
-    "click",
-    () => {
-
-      const target =
-        localStorage.getItem(
-          "sukigao-refinement-target"
-        );
-
-      if (target) {
-
-        handleRefinementChoice(
-          "left"
-        );
-
-      } else {
-
-        handleChoice("left");
-      }
+    if (people.length < 2) {
+        return;
     }
-  );
+
+    mode = "refine";
+
+    refinementStart =
+        currentComparison;
+
+    refinementTarget =
+        currentComparison +
+        REFINE_COMPARISONS;
 
 
-document
-  .getElementById("rightChoice")
-  .addEventListener(
-    "click",
-    () => {
-
-      const target =
-        localStorage.getItem(
-          "sukigao-refinement-target"
-        );
-
-      if (target) {
-
-        handleRefinementChoice(
-          "right"
-        );
-
-      } else {
-
-        handleChoice("right");
-      }
+    if (compareScreen) {
+        compareScreen.style.display = "block";
     }
-  );
 
-
-document
-  .getElementById("bothChoice")
-  .addEventListener(
-    "click",
-    () => {
-
-      const target =
-        localStorage.getItem(
-          "sukigao-refinement-target"
-        );
-
-      if (target) {
-
-        handleRefinementChoice(
-          "both"
-        );
-
-      } else {
-
-        handleChoice("both");
-      }
+    if (resultScreen) {
+        resultScreen.style.display = "none";
     }
-  );
 
 
-document
-  .getElementById("neitherChoice")
-  .addEventListener(
-    "click",
-    () => {
+    saveState();
 
-      const target =
-        localStorage.getItem(
-          "sukigao-refinement-target"
+    showNextComparison();
+}
+
+
+// ========================================
+// 初期状態
+// ========================================
+
+function initializeFreshState() {
+
+    initializeScores();
+
+    phase1Pairs =
+        createPhase1Pairs();
+
+    currentComparison = 0;
+
+    mode = "normal";
+
+    refinementStart = 0;
+
+    refinementTarget = null;
+
+    currentPair = null;
+
+    saveState();
+}
+
+
+// ========================================
+// 保存用の人物リスト識別子
+// CSVを変更した場合は自動的にリセット
+// ========================================
+
+function getPeopleSignature() {
+
+    return people
+        .map(person =>
+            `${person.id}|${person.name}|${person.image}`
+        )
+        .join("||");
+}
+
+
+// ========================================
+// LocalStorage保存
+// ========================================
+
+function saveState() {
+
+    const data = {
+
+        version: 2,
+
+        peopleSignature:
+            getPeopleSignature(),
+
+        scores,
+
+        comparisonCounts,
+
+        comparisonHistory,
+
+        phase1Pairs,
+
+        currentComparison,
+
+        mode,
+
+        refinementStart,
+
+        refinementTarget
+    };
+
+
+    try {
+
+        localStorage.setItem(
+            STATE_KEY,
+            JSON.stringify(data)
         );
 
-      if (target) {
+    } catch (error) {
 
-        handleRefinementChoice(
-          "neither"
+        console.error(
+            "LocalStorageへの保存に失敗しました",
+            error
         );
-
-      } else {
-
-        handleChoice("neither");
-      }
     }
-  );
+}
 
 
-// ================================
-// TOP9 → 精密比較
-// ================================
+// ========================================
+// LocalStorage読み込み
+// ========================================
 
-refineButton.addEventListener(
-  "click",
-  startRefinement
-);
+function loadState() {
+
+    try {
+
+        const raw =
+            localStorage.getItem(
+                STATE_KEY
+            );
+
+        if (!raw) {
+            return false;
+        }
 
 
-// ================================
-// リセット
-// ================================
+        const data =
+            JSON.parse(raw);
 
-resetButton.addEventListener(
-  "click",
-  () => {
+
+        // バージョンが違う
+        if (data.version !== 2) {
+            return false;
+        }
+
+
+        // CSVの内容が変わっている
+        if (
+            data.peopleSignature !==
+            getPeopleSignature()
+        ) {
+            return false;
+        }
+
+
+        if (
+            !data.scores ||
+            !data.comparisonCounts ||
+            !data.comparisonHistory ||
+            !Array.isArray(data.phase1Pairs)
+        ) {
+            return false;
+        }
+
+
+        scores =
+            data.scores;
+
+        comparisonCounts =
+            data.comparisonCounts;
+
+        comparisonHistory =
+            data.comparisonHistory;
+
+        phase1Pairs =
+            data.phase1Pairs;
+
+        currentComparison =
+            Number(data.currentComparison) || 0;
+
+        mode =
+            data.mode || "normal";
+
+        refinementStart =
+            Number(data.refinementStart) || 0;
+
+        refinementTarget =
+            data.refinementTarget
+                ? Number(data.refinementTarget)
+                : null;
+
+
+        // 念のため全員のスコアがあるか確認
+        for (const person of people) {
+
+            if (
+                typeof scores[person.id] !==
+                "number"
+            ) {
+                return false;
+            }
+
+            if (
+                typeof comparisonCounts[person.id] !==
+                "number"
+            ) {
+                return false;
+            }
+        }
+
+
+        return true;
+
+    } catch (error) {
+
+        console.error(
+            "保存データの読み込みに失敗しました",
+            error
+        );
+
+        return false;
+    }
+}
+
+
+// ========================================
+// 最初からやり直す
+// ========================================
+
+function resetGame() {
 
     const confirmed =
-      confirm(
-        "比較結果をすべて消して、最初からやり直しますか？"
-      );
-
+        window.confirm(
+            "今までの比較結果を消して、最初からやり直しますか？"
+        );
 
     if (!confirmed) {
-      return;
+        return;
     }
 
 
-    localStorage.removeItem(
-      "sukigao-sort-data"
+    try {
+        localStorage.removeItem(
+            STATE_KEY
+        );
+    } catch (error) {
+        console.error(error);
+    }
+
+
+    window.location.reload();
+}
+
+
+// ========================================
+// 人物データ読み込み
+// ========================================
+
+async function loadPeople() {
+
+    try {
+
+        const response =
+            await fetch(
+                "./people.csv",
+                {
+                    cache: "no-store"
+                }
+            );
+
+
+        if (!response.ok) {
+            throw new Error(
+                `people.csvを読み込めませんでした（${response.status}）`
+            );
+        }
+
+
+        const text =
+            await response.text();
+
+
+        people =
+            parseCSV(text);
+
+
+        if (people.length < 2) {
+            throw new Error(
+                "比較する人物が2人未満です"
+            );
+        }
+
+
+        // ID重複チェック
+        const ids =
+            people.map(person => person.id);
+
+        const uniqueIds =
+            new Set(ids);
+
+        if (
+            uniqueIds.size !==
+            people.length
+        ) {
+            throw new Error(
+                "people.csvに重複したidがあります"
+            );
+        }
+
+
+        // 必須項目チェック
+        for (const person of people) {
+
+            if (
+                !person.id ||
+                !person.name ||
+                !person.image
+            ) {
+                throw new Error(
+                    `people.csvに空欄があります：${JSON.stringify(person)}`
+                );
+            }
+        }
+
+
+        peopleById =
+            new Map(
+                people.map(
+                    person => [
+                        person.id,
+                        person
+                    ]
+                )
+            );
+
+
+        // 人数から自動計算
+        normalTarget =
+            calculateNormalTarget();
+
+
+        // 保存データを読み込み
+        const loaded =
+            loadState();
+
+
+        if (!loaded) {
+            initializeFreshState();
+        }
+
+
+        // 現在の状態に応じて画面を表示
+        if (
+            mode === "refine" &&
+            refinementTarget !== null &&
+            currentComparison < refinementTarget
+        ) {
+
+            if (compareScreen) {
+                compareScreen.style.display =
+                    "block";
+            }
+
+            if (resultScreen) {
+                resultScreen.style.display =
+                    "none";
+            }
+
+            showNextComparison();
+        }
+
+        else if (
+            mode === "normal" &&
+            currentComparison < normalTarget
+        ) {
+
+            if (compareScreen) {
+                compareScreen.style.display =
+                    "block";
+            }
+
+            if (resultScreen) {
+                resultScreen.style.display =
+                    "none";
+            }
+
+            showNextComparison();
+        }
+
+        else {
+
+            showResult();
+        }
+
+
+        console.log(
+            `GMMTV好き顔ソート：${people.length}人`
+        );
+
+        console.log(
+            `通常比較：${normalTarget}回`
+        );
+
+        console.log(
+            `初回全員チェック：${phase1Pairs.length}回`
+        );
+
+    } catch (error) {
+
+        console.error(
+            "初期化エラー：",
+            error
+        );
+
+
+        if (phaseText) {
+            phaseText.textContent =
+                "読み込みエラー";
+        }
+
+        if (progressText) {
+            progressText.textContent =
+                error.message;
+        }
+
+
+        alert(
+            "データの読み込みに失敗しました。\n\n" +
+            error.message +
+            "\n\nブラウザの開発者ツール（F12）のConsoleにも詳細が出ています。"
+        );
+    }
+}
+
+
+// ========================================
+// ボタンイベント
+// ========================================
+
+if (bothButton) {
+    bothButton.addEventListener(
+        "click",
+        () => handleChoice("both")
     );
+}
 
-    localStorage.removeItem(
-      "sukigao-refinement-target"
+
+if (neitherButton) {
+    neitherButton.addEventListener(
+        "click",
+        () => handleChoice("neither")
     );
+}
 
 
-    location.reload();
-  }
-);
+// 左・右ボタンが存在する場合
+const leftButton =
+    document.getElementById("leftButton");
+
+const rightButton =
+    document.getElementById("rightButton");
 
 
-// ================================
+if (leftButton) {
+    leftButton.addEventListener(
+        "click",
+        () => handleChoice("left")
+    );
+}
+
+
+if (rightButton) {
+    rightButton.addEventListener(
+        "click",
+        () => handleChoice("right")
+    );
+}
+
+
+if (refineButton) {
+    refineButton.addEventListener(
+        "click",
+        startRefinement
+    );
+}
+
+
+if (resetButton) {
+    resetButton.addEventListener(
+        "click",
+        resetGame
+    );
+}
+
+
+// ========================================
 // 起動
-// ================================
+// ========================================
 
-loadPeople()
-  .catch(error => {
-
-    console.error(error);
-
-    alert(
-      "データの読み込みに失敗しました。\n" +
-      "people.csvとimagesフォルダを確認してください。"
-    );
-
-  });
+loadPeople();
