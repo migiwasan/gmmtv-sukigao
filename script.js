@@ -1298,47 +1298,51 @@ async function loadPeople() {
     }
 }
 
-
 // ========================================
 // ボタンイベント
 // ========================================
 
-if (bothButton) {
-    bothButton.addEventListener(
-        "click",
-        () => handleChoice("both")
-    );
-}
+const leftChoice =
+    document.getElementById("leftChoice");
+
+const rightChoice =
+    document.getElementById("rightChoice");
+
+const bothChoice =
+    document.getElementById("bothChoice");
+
+const neitherChoice =
+    document.getElementById("neitherChoice");
 
 
-if (neitherButton) {
-    neitherButton.addEventListener(
-        "click",
-        () => handleChoice("neither")
-    );
-}
-
-
-// 左・右ボタンが存在する場合
-const leftButton =
-    document.getElementById("leftButton");
-
-const rightButton =
-    document.getElementById("rightButton");
-
-
-if (leftButton) {
-    leftButton.addEventListener(
+if (leftChoice) {
+    leftChoice.addEventListener(
         "click",
         () => handleChoice("left")
     );
 }
 
 
-if (rightButton) {
-    rightButton.addEventListener(
+if (rightChoice) {
+    rightChoice.addEventListener(
         "click",
         () => handleChoice("right")
+    );
+}
+
+
+if (bothChoice) {
+    bothChoice.addEventListener(
+        "click",
+        () => handleChoice("both")
+    );
+}
+
+
+if (neitherChoice) {
+    neitherChoice.addEventListener(
+        "click",
+        () => handleChoice("neither")
     );
 }
 
