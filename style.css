@@ -6,35 +6,30 @@
   box-sizing: border-box;
 }
 
-html {
-  margin: 0;
-  padding: 0;
-}
 
 body {
   margin: 0;
-  padding: 0;
 
-  background: #fafafa;
-  color: #333;
+  padding: 20px;
 
   font-family:
     -apple-system,
     BlinkMacSystemFont,
-    "Helvetica Neue",
-    "Yu Gothic",
-    YuGothic,
+    "Segoe UI",
+    "Noto Sans JP",
     sans-serif;
+
+  background: #fafafa;
+
+  color: #333;
 }
 
-button {
-  font-family: inherit;
-}
 
 .container {
-  width: min(1000px, 94%);
+  width: 100%;
+  max-width: 900px;
+
   margin: 0 auto;
-  padding: 30px 0 50px;
 }
 
 
@@ -44,54 +39,60 @@ button {
 
 header {
   text-align: center;
-  margin-bottom: 25px;
+
+  margin-bottom: 20px;
 }
+
 
 h1 {
-  margin: 0 0 8px;
+  margin: 10px 0;
 
-  font-size: 32px;
-  line-height: 1.3;
+  font-size: 28px;
 }
+
 
 #phaseText {
-  margin: 0 0 15px;
+  margin: 8px 0;
 
-  color: #777;
-  font-size: 15px;
+  color: #666;
+
+  font-size: 14px;
 }
 
 
-/* ========================================
-   プログレスバー
-======================================== */
+#progressText {
+  margin: 8px 0;
+
+  font-size: 13px;
+
+  color: #777;
+}
+
 
 .progress {
   width: 100%;
+
   height: 8px;
 
-  background: #e5e5e5;
-  border-radius: 999px;
-
   overflow: hidden;
+
+  border-radius: 10px;
+
+  background: #e5e5e5;
 }
+
 
 #progressBar {
   width: 0%;
+
   height: 100%;
 
-  background: #333;
+  border-radius: 10px;
 
-  transition: width 0.25s ease;
-}
+  background: #777;
 
-#progressText {
-  margin-top: 8px;
-
-  color: #777;
-  font-size: 14px;
-
-  text-align: center;
+  transition:
+    width 0.25s ease;
 }
 
 
@@ -99,67 +100,75 @@ h1 {
    比較画面
 ======================================== */
 
+#compareScreen {
+  width: 100%;
+}
+
+
 .faces {
   display: flex;
 
   align-items: center;
+
   justify-content: center;
 
-  gap: 25px;
+  gap: 20px;
 
-  margin: 20px 0 25px;
+  width: 100%;
 }
 
+
 .face-card {
-  width: min(40vw, 360px);
-  height: min(55vw, 480px);
+  width: 42%;
+
+  max-width: 350px;
 
   padding: 0;
 
   border: none;
-  border-radius: 15px;
 
-  overflow: hidden;
-
-  background: white;
+  background: transparent;
 
   cursor: pointer;
-
-  box-shadow:
-    0 4px 15px rgba(0, 0, 0, 0.12);
-
-  transition:
-    transform 0.15s ease,
-    box-shadow 0.15s ease;
 }
 
-.face-card:hover {
-  transform: translateY(-4px);
-
-  box-shadow:
-    0 8px 25px rgba(0, 0, 0, 0.18);
-}
-
-.face-card:active {
-  transform: scale(0.98);
-}
 
 .face-card img {
+  display: block;
+
   width: 100%;
-  height: 100%;
+
+  aspect-ratio: 3 / 4;
 
   object-fit: cover;
 
-  display: block;
+  border-radius: 12px;
+
+  background: #eee;
+
+  box-shadow:
+    0 3px 12px
+    rgba(0, 0, 0, 0.12);
+
+  transition:
+    transform 0.15s ease;
 }
 
+
+.face-card:hover img {
+  transform:
+    scale(1.02);
+}
+
+
 .vs {
-  flex: 0 0 auto;
+  flex-shrink: 0;
+
+  font-size: 22px;
 
   font-weight: bold;
-  font-size: 20px;
 
-  color: #999;
+  color: #888;
 }
 
 
@@ -167,94 +176,111 @@ h1 {
    選択ボタン
 ======================================== */
 
-/*
-   配置：
-
-   ┌───────────────┐ ┌───────────────┐
-   │  ← 左が好き   │ │  右が好き →   │
-   └───────────────┘ └───────────────┘
-
-   ┌───────────────────────────────┐
-   │        ♡ どちらも好き         │
-   └───────────────────────────────┘
-
-   ┌───────────────────────────────┐
-   │      × どちらも好きじゃない    │
-   └───────────────────────────────┘
-*/
-
 .choice-buttons {
   display: grid;
 
-  grid-template-columns: 1fr 1fr;
-  grid-template-rows: auto auto auto;
+  grid-template-columns:
+    1fr 1fr;
 
-  gap: 10px;
+  gap: 12px;
 
-  width: min(700px, 100%);
-  margin: 20px auto 0;
+  width: 100%;
+
+  max-width: 700px;
+
+  margin: 22px auto 0;
 }
 
-.choice-buttons button {
-  width: 100%;
-  min-height: 52px;
 
-  padding: 10px 15px;
+.choice-buttons button {
+  min-height: 55px;
+
+  padding: 12px 15px;
 
   border: 1px solid #ddd;
+
   border-radius: 10px;
 
-  background: white;
-  color: #222;
+  background: #fff;
+
+  color: #333;
 
   font-size: 15px;
-  font-weight: bold;
+
+  font-weight: 600;
+
+  cursor: pointer;
+
+  box-shadow:
+    0 2px 5px
+    rgba(0, 0, 0, 0.05);
+
+  transition:
+    background 0.15s ease,
+    transform 0.1s ease;
+}
+
+
+.choice-buttons button:hover {
+  background: #f5f5f5;
+}
+
+
+.choice-buttons button:active {
+  transform:
+    scale(0.98);
+}
+
+
+/* ========================================
+   ひとつ前に戻るボタン
+======================================== */
+
+.undo-button {
+  display: block;
+
+  width: min(
+    400px,
+    90%
+  );
+
+  margin: 16px auto 0;
+
+  padding: 10px 16px;
+
+  border: 1px solid #ccc;
+
+  border-radius: 8px;
+
+  background: #fff;
+
+  color: #555;
+
+  font-size: 14px;
 
   cursor: pointer;
 
   transition:
-    background 0.15s ease,
-    transform 0.1s ease,
-    box-shadow 0.15s ease;
-}
-
-.choice-buttons button:hover {
-  background: #f3f3f3;
-
-  box-shadow:
-    0 2px 8px rgba(0, 0, 0, 0.06);
-}
-
-.choice-buttons button:active {
-  transform: scale(0.98);
+    opacity 0.2s ease,
+    background 0.2s ease;
 }
 
 
-/* 左が好き */
-#leftChoice {
-  grid-column: 1;
-  grid-row: 1;
+.undo-button:hover:not(:disabled) {
+  background: #f5f5f5;
 }
 
 
-/* 右が好き */
-#rightChoice {
-  grid-column: 2;
-  grid-row: 1;
+.undo-button:active:not(:disabled) {
+  transform:
+    scale(0.98);
 }
 
 
-/* どちらも好き */
-#bothChoice {
-  grid-column: 1 / 3;
-  grid-row: 2;
-}
+.undo-button:disabled {
+  opacity: 0.35;
 
-
-/* どちらも好きじゃない */
-#neitherChoice {
-  grid-column: 1 / 3;
-  grid-row: 3;
+  cursor: not-allowed;
 }
 
 
@@ -266,21 +292,27 @@ h1 {
   display: none;
 }
 
+
 #resultScreen {
   text-align: center;
 }
 
-#resultScreen h2 {
-  margin: 25px 0 8px;
 
-  font-size: 28px;
-  line-height: 1.3;
+#resultTitle {
+  margin:
+    10px 0 8px;
+
+  font-size: 25px;
 }
 
+
 #resultDescription {
-  margin-bottom: 25px;
+  margin:
+    0 0 20px;
 
   color: #777;
+
+  font-size: 14px;
 }
 
 
@@ -296,88 +328,70 @@ h1 {
 
   gap: 18px;
 
-  width: min(850px, 100%);
+  width: 100%;
+
+  max-width: 800px;
+
   margin: 0 auto;
 }
 
-
-/*
-   JSでは ranking-card というクラスを
-   付けているので、それに合わせる
-*/
 
 .ranking-card {
   position: relative;
 
   overflow: hidden;
 
-  background: white;
+  border-radius: 12px;
 
-  border-radius: 14px;
-
-  box-shadow:
-    0 4px 15px rgba(0, 0, 0, 0.1);
-
-  transition:
-    transform 0.15s ease,
-    box-shadow 0.15s ease;
-}
-
-.ranking-card:hover {
-  transform: translateY(-3px);
+  background: #fff;
 
   box-shadow:
-    0 7px 20px rgba(0, 0, 0, 0.15);
+    0 3px 12px
+    rgba(0, 0, 0, 0.1);
 }
 
 
-/* 順位 */
+.ranking-card img {
+  display: block;
+
+  width: 100%;
+
+  aspect-ratio: 3 / 4;
+
+  object-fit: cover;
+
+  background: #eee;
+}
+
+
 .ranking-number {
   position: absolute;
 
   top: 8px;
+
   left: 8px;
 
-  width: 38px;
-  height: 38px;
-
-  display: flex;
-
-  align-items: center;
-  justify-content: center;
-
-  background: rgba(0, 0, 0, 0.75);
-  color: white;
-
-  border-radius: 50%;
-
-  font-size: 14px;
-  font-weight: bold;
-
   z-index: 2;
+
+  padding: 5px 8px;
+
+  border-radius: 6px;
+
+  background:
+    rgba(255, 255, 255, 0.9);
+
+  font-size: 13px;
+
+  font-weight: bold;
 }
 
 
-/* 結果画像 */
-.ranking-card img {
-  width: 100%;
-
-  aspect-ratio: 1 / 1.15;
-
-  object-fit: cover;
-
-  display: block;
-}
-
-
-/* 名前 */
 .ranking-name {
-  padding: 10px 5px 12px;
+  padding: 10px;
 
   font-size: 15px;
-  font-weight: bold;
 
-  line-height: 1.3;
+  font-weight: 600;
 }
 
 
@@ -389,58 +403,61 @@ h1 {
   display: flex;
 
   flex-direction: column;
+
   align-items: center;
 
   gap: 12px;
 
-  margin-top: 30px;
+  margin-top: 25px;
 }
+
 
 .main-button,
 .sub-button {
-  width: min(500px, 100%);
+  width: min(
+    500px,
+    90%
+  );
 
-  min-height: 52px;
+  min-height: 50px;
 
-  padding: 10px 20px;
+  padding: 12px 20px;
 
   border-radius: 10px;
 
   font-size: 15px;
-  font-weight: bold;
+
+  font-weight: 600;
 
   cursor: pointer;
-
-  transition:
-    background 0.15s ease,
-    transform 0.1s ease;
 }
+
 
 .main-button {
   border: none;
 
   background: #333;
-  color: white;
+
+  color: #fff;
 }
+
 
 .main-button:hover {
-  background: #222;
+  opacity: 0.85;
 }
 
-.main-button:active,
-.sub-button:active {
-  transform: scale(0.98);
-}
 
 .sub-button {
-  border: 1px solid #ddd;
+  border: 1px solid #ccc;
 
-  background: white;
+  background: #fff;
+
   color: #555;
 }
 
+
 .sub-button:hover {
-  background: #f3f3f3;
+  background: #f5f5f5;
 }
 
 
@@ -448,89 +465,58 @@ h1 {
    スマホ
 ======================================== */
 
-@media (max-width: 600px) {
+@media (
+  max-width: 600px
+) {
 
-  .container {
-    width: 94%;
-
-    padding-top: 20px;
-    padding-bottom: 35px;
+  body {
+    padding: 12px;
   }
 
-
-  /* --------------------
-     ヘッダー
-  -------------------- */
 
   h1 {
-    font-size: 26px;
+    font-size: 22px;
   }
 
-  #phaseText {
-    font-size: 14px;
-  }
-
-
-  /* --------------------
-     顔比較
-  -------------------- */
 
   .faces {
     gap: 8px;
-
-    margin-top: 15px;
-    margin-bottom: 20px;
   }
+
 
   .face-card {
-    width: 44vw;
-    height: 58vw;
-
-    border-radius: 10px;
+    width: 46%;
   }
+
 
   .vs {
-    font-size: 14px;
+    font-size: 16px;
   }
 
 
-  /* --------------------
-     選択ボタン
-  -------------------- */
-
-  /*
-     スマホでも配置は同じ
-
-     左       右
-
-     どちらも好き
-
-     どちらも好きじゃない
-  */
-
   .choice-buttons {
-    width: 100%;
-
-    grid-template-columns: 1fr 1fr;
-    grid-template-rows: auto auto auto;
+    grid-template-columns:
+      1fr;
 
     gap: 8px;
 
     margin-top: 15px;
   }
 
-  .choice-buttons button {
-    min-height: 50px;
 
-    padding: 8px 5px;
+  .choice-buttons button {
+    min-height: 48px;
 
     font-size: 14px;
   }
 
 
-  /* --------------------
-     TOP9
-  -------------------- */
+  .undo-button {
+    margin-top: 12px;
+
+    font-size: 13px;
+  }
+
 
   #rankingGrid {
     grid-template-columns:
@@ -539,36 +525,22 @@ h1 {
     gap: 8px;
   }
 
-  .ranking-card {
-    border-radius: 8px;
-  }
-
-  .ranking-number {
-    width: 27px;
-    height: 27px;
-
-    top: 5px;
-    left: 5px;
-
-    font-size: 12px;
-  }
 
   .ranking-name {
-    padding: 7px 2px 9px;
+    padding: 7px 4px;
 
     font-size: 12px;
   }
 
 
-  /* --------------------
-     結果画面
-  -------------------- */
+  .ranking-number {
+    top: 4px;
 
-  #resultScreen h2 {
-    font-size: 23px;
+    left: 4px;
+
+    padding: 3px 5px;
+
+    font-size: 10px;
   }
 
-  #resultDescription {
-    font-size: 14px;
-  }
 }
