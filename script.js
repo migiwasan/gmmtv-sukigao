@@ -20,9 +20,9 @@ const BOTH_BONUS = 8;
 const NEITHER_PENALTY = 8;
 
 
-// LocalStorageの保存キー
-// v4にして以前の壊れた状態を使わないようにする
-const STATE_KEY = "gmmtv-sukigao-state-v4";
+// LocalStorage
+const STATE_KEY =
+  "gmmtv-sukigao-state-v4";
 
 
 // ========================================
@@ -57,54 +57,96 @@ let isProcessing = false;
 
 
 // ========================================
+// 「ひとつ前に戻る」用
+// ========================================
+
+let undoState = null;
+
+
+// ========================================
 // HTML要素
 // ========================================
 
 const compareScreen =
-  document.getElementById("compareScreen");
+  document.getElementById(
+    "compareScreen"
+  );
 
 const resultScreen =
-  document.getElementById("resultScreen");
+  document.getElementById(
+    "resultScreen"
+  );
 
 
 const leftImage =
-  document.getElementById("leftImage");
+  document.getElementById(
+    "leftImage"
+  );
 
 const rightImage =
-  document.getElementById("rightImage");
+  document.getElementById(
+    "rightImage"
+  );
 
 
 const progressBar =
-  document.getElementById("progressBar");
+  document.getElementById(
+    "progressBar"
+  );
 
 const progressText =
-  document.getElementById("progressText");
+  document.getElementById(
+    "progressText"
+  );
 
 const phaseText =
-  document.getElementById("phaseText");
+  document.getElementById(
+    "phaseText"
+  );
+
 
 const rankingGrid =
-  document.getElementById("rankingGrid");
+  document.getElementById(
+    "rankingGrid"
+  );
 
 
 const leftChoice =
-  document.getElementById("leftChoice");
+  document.getElementById(
+    "leftChoice"
+  );
 
 const rightChoice =
-  document.getElementById("rightChoice");
+  document.getElementById(
+    "rightChoice"
+  );
 
 const bothChoice =
-  document.getElementById("bothChoice");
+  document.getElementById(
+    "bothChoice"
+  );
 
 const neitherChoice =
-  document.getElementById("neitherChoice");
+  document.getElementById(
+    "neitherChoice"
+  );
+
+
+const undoButton =
+  document.getElementById(
+    "undoButton"
+  );
 
 
 const refineButton =
-  document.getElementById("refineButton");
+  document.getElementById(
+    "refineButton"
+  );
 
 const resetButton =
-  document.getElementById("resetButton");
+  document.getElementById(
+    "resetButton"
+  );
 
 
 // ========================================
@@ -113,8 +155,12 @@ const resetButton =
 
 function parseCSV(text) {
 
-  // BOM除去
-  text = text.replace(/^\uFEFF/, "");
+  text =
+    text.replace(
+      /^\uFEFF/,
+      ""
+    );
+
 
   const rows = [];
 
@@ -131,13 +177,16 @@ function parseCSV(text) {
     i++
   ) {
 
-    const char = text[i];
+    const char =
+      text[i];
 
-    const next = text[i + 1];
+    const next =
+      text[i + 1];
 
 
-    // ダブルクォーテーション
-    if (char === '"') {
+    if (
+      char === '"'
+    ) {
 
       if (
         inQuotes &&
@@ -150,27 +199,28 @@ function parseCSV(text) {
 
       } else {
 
-        inQuotes = !inQuotes;
+        inQuotes =
+          !inQuotes;
 
       }
 
     }
 
 
-    // カンマ
     else if (
       char === "," &&
       !inQuotes
     ) {
 
-      row.push(cell.trim());
+      row.push(
+        cell.trim()
+      );
 
       cell = "";
 
     }
 
 
-    // 改行
     else if (
       (
         char === "\n" ||
@@ -189,18 +239,23 @@ function parseCSV(text) {
       }
 
 
-      row.push(cell.trim());
+      row.push(
+        cell.trim()
+      );
 
       cell = "";
 
 
       if (
         row.some(
-          value => value !== ""
+          value =>
+            value !== ""
         )
       ) {
 
-        rows.push(row);
+        rows.push(
+          row
+        );
 
       }
 
@@ -210,7 +265,6 @@ function parseCSV(text) {
     }
 
 
-    // 通常文字
     else {
 
       cell += char;
@@ -220,29 +274,35 @@ function parseCSV(text) {
   }
 
 
-  // 最後の行
   if (
     cell !== "" ||
     row.length > 0
   ) {
 
-    row.push(cell.trim());
+    row.push(
+      cell.trim()
+    );
 
 
     if (
       row.some(
-        value => value !== ""
+        value =>
+          value !== ""
       )
     ) {
 
-      rows.push(row);
+      rows.push(
+        row
+      );
 
     }
 
   }
 
 
-  if (rows.length < 2) {
+  if (
+    rows.length < 2
+  ) {
 
     throw new Error(
       "people.csvにデータがありません"
@@ -253,7 +313,8 @@ function parseCSV(text) {
 
   const headers =
     rows[0].map(
-      header => header.trim()
+      header =>
+        header.trim()
     );
 
 
@@ -282,18 +343,20 @@ function parseCSV(text) {
 
   return rows
     .slice(1)
-    .map(row => ({
+    .map(
+      row => ({
 
-      id:
-        row[idIndex] || "",
+        id:
+          row[idIndex] || "",
 
-      name:
-        row[nameIndex] || "",
+        name:
+          row[nameIndex] || "",
 
-      image:
-        row[imageIndex] || ""
+        image:
+          row[imageIndex] || ""
 
-    }));
+      })
+    );
 
 }
 
@@ -339,9 +402,7 @@ function shuffle(array) {
 
 
 // ========================================
-// 初回比較ペア作成
-//
-// 全員が最低1回は登場する
+// 初回比較ペア
 // ========================================
 
 function createPhase1Pairs() {
@@ -349,7 +410,8 @@ function createPhase1Pairs() {
   const ids =
     shuffle(
       people.map(
-        person => person.id
+        person =>
+          person.id
       )
     );
 
@@ -357,7 +419,6 @@ function createPhase1Pairs() {
   const pairs = [];
 
 
-  // 2人ずつペアにする
   for (
     let i = 0;
     i + 1 < ids.length;
@@ -389,7 +450,9 @@ function createPhase1Pairs() {
 
 
     const opponentId =
-      ids[opponentIndex];
+      ids[
+        opponentIndex
+      ];
 
 
     pairs.push([
@@ -406,7 +469,7 @@ function createPhase1Pairs() {
 
 
 // ========================================
-// 比較回数
+// 通常比較回数
 // ========================================
 
 function calculateNormalTarget() {
@@ -426,7 +489,7 @@ function calculateNormalTarget() {
 
 
 // ========================================
-// ペア識別
+// ペアキー
 // ========================================
 
 function getPairKey(
@@ -469,7 +532,7 @@ function getPairCount(
 
 
 // ========================================
-// ペアを記録
+// ペア記録
 // ========================================
 
 function recordPair(
@@ -494,7 +557,7 @@ function recordPair(
 
 
 // ========================================
-// 最適な比較ペアを探す
+// 比較ペア選択
 // ========================================
 
 function findBestPair(
@@ -546,7 +609,7 @@ function findBestPair(
         );
 
 
-      const individualCountDifference =
+      const countDifference =
         Math.abs(
           (
             comparisonCounts[a.id] ||
@@ -559,18 +622,10 @@ function findBestPair(
         );
 
 
-      /*
-       * 優先順位
-       *
-       * ① 同じペアを何度も比較しない
-       * ② スコアが近い人同士
-       * ③ 比較回数の偏りが少ない
-       */
-
       const priority =
         pairCount * 100000 +
         scoreDifference +
-        individualCountDifference * 0.1;
+        countDifference * 0.1;
 
 
       possiblePairs.push({
@@ -640,8 +695,11 @@ function initializeScores() {
   people.forEach(
     person => {
 
-      scores[person.id] =
+      scores[
+        person.id
+      ] =
         INITIAL_SCORE;
+
 
       comparisonCounts[
         person.id
@@ -675,7 +733,6 @@ function applyChoice(
     currentPair[1];
 
 
-  // 左が好き
   if (
     choice === "left"
   ) {
@@ -689,7 +746,6 @@ function applyChoice(
   }
 
 
-  // 右が好き
   else if (
     choice === "right"
   ) {
@@ -703,7 +759,6 @@ function applyChoice(
   }
 
 
-  // どちらも好き
   else if (
     choice === "both"
   ) {
@@ -717,7 +772,6 @@ function applyChoice(
   }
 
 
-  // どちらも好きじゃない
   else if (
     choice === "neither"
   ) {
@@ -782,7 +836,7 @@ function updateElo(
 
 
 // ========================================
-// 比較回数を記録
+// 比較記録
 // ========================================
 
 function recordComparison() {
@@ -824,12 +878,14 @@ function recordComparison() {
 
 
 // ========================================
-// 現在のランキング
+// ランキング
 // ========================================
 
 function getRanking() {
 
-  return [...people].sort(
+  return [
+    ...people
+  ].sort(
     (a, b) => {
 
       const scoreDifference =
@@ -864,7 +920,7 @@ function getRanking() {
 
 
 // ========================================
-// 次の比較ペアを決める
+// 次の比較ペア
 // ========================================
 
 function chooseNextPair() {
@@ -877,7 +933,6 @@ function chooseNextPair() {
     mode === "normal"
   ) {
 
-    // 最初は全員を登場させる
     if (
       currentComparison <
       phase1Pairs.length
@@ -916,7 +971,6 @@ function chooseNextPair() {
     }
 
 
-    // それ以降は上位候補
     const ranking =
       getRanking();
 
@@ -943,7 +997,7 @@ function chooseNextPair() {
 
 
   // ==============================
-  // 精密比較モード
+  // 精密比較
   // ==============================
 
   if (
@@ -981,7 +1035,7 @@ function chooseNextPair() {
 
 
 // ========================================
-// 画像エラー用SVG
+// 画像エラー用
 // ========================================
 
 function createErrorImage(
@@ -1018,7 +1072,9 @@ function createErrorImage(
         font-size="30"
         fill="#555555"
       >
-        ${escapeXML(person.name)}
+        ${escapeXML(
+          person.name
+        )}
       </text>
 
     </svg>
@@ -1072,7 +1128,7 @@ function escapeXML(
 
 
 // ========================================
-// 画像を設定
+// 画像表示
 // ========================================
 
 function setFaceImage(
@@ -1094,11 +1150,12 @@ function setFaceImage(
     person.name;
 
 
-  // エラー時
   element.onerror =
     function () {
 
-      element.onerror = null;
+      element.onerror =
+        null;
+
 
       element.src =
         createErrorImage(
@@ -1107,20 +1164,6 @@ function setFaceImage(
 
     };
 
-
-  /*
-   * people.csvには
-   *
-   * 001.jpg
-   * 002.jpg
-   * ...
-   *
-   * と入っているため、
-   *
-   * ./images/001.jpg
-   *
-   * の形で読み込む
-   */
 
   element.src =
     "./images/" +
@@ -1132,7 +1175,7 @@ function setFaceImage(
 
 
 // ========================================
-// プログレス表示
+// プログレス
 // ========================================
 
 function updateProgress() {
@@ -1143,10 +1186,6 @@ function updateProgress() {
 
   let phase;
 
-
-  // ==============================
-  // 通常モード
-  // ==============================
 
   if (
     mode === "normal"
@@ -1176,10 +1215,6 @@ function updateProgress() {
 
   }
 
-
-  // ==============================
-  // 精密モード
-  // ==============================
 
   else if (
     mode === "refine"
@@ -1269,7 +1304,6 @@ function showNextComparison() {
     chooseNextPair();
 
 
-  // 比較対象がなくなった
   if (!pair) {
 
     showResult();
@@ -1283,14 +1317,12 @@ function showNextComparison() {
     pair;
 
 
-  // 左画像
   setFaceImage(
     leftImage,
     pair[0]
   );
 
 
-  // 右画像
   setFaceImage(
     rightImage,
     pair[1]
@@ -1298,6 +1330,222 @@ function showNextComparison() {
 
 
   updateProgress();
+
+}
+
+
+// ========================================
+// 「ひとつ前の状態」を保存
+// ========================================
+
+function saveUndoState() {
+
+  if (!currentPair) {
+
+    return;
+
+  }
+
+
+  undoState = {
+
+    scores:
+      JSON.parse(
+        JSON.stringify(
+          scores
+        )
+      ),
+
+    comparisonCounts:
+      JSON.parse(
+        JSON.stringify(
+          comparisonCounts
+        )
+      ),
+
+    comparisonHistory:
+      JSON.parse(
+        JSON.stringify(
+          comparisonHistory
+        )
+      ),
+
+    currentComparison:
+      currentComparison,
+
+    currentPair: [
+      currentPair[0].id,
+      currentPair[1].id
+    ],
+
+    mode:
+      mode,
+
+    refinementStart:
+      refinementStart,
+
+    refinementTarget:
+      refinementTarget
+
+  };
+
+
+  updateUndoButton();
+
+}
+
+
+// ========================================
+// 「ひとつ前」に戻る
+// ========================================
+
+function undoLastChoice() {
+
+  if (
+    !undoState ||
+    isProcessing
+  ) {
+
+    return;
+
+  }
+
+
+  // スコア復元
+  scores =
+    JSON.parse(
+      JSON.stringify(
+        undoState.scores
+      )
+    );
+
+
+  // 比較回数復元
+  comparisonCounts =
+    JSON.parse(
+      JSON.stringify(
+        undoState.comparisonCounts
+      )
+    );
+
+
+  // ペア履歴復元
+  comparisonHistory =
+    JSON.parse(
+      JSON.stringify(
+        undoState.comparisonHistory
+      )
+    );
+
+
+  // 比較回数復元
+  currentComparison =
+    undoState.currentComparison;
+
+
+  // モード復元
+  mode =
+    undoState.mode;
+
+
+  refinementStart =
+    undoState.refinementStart;
+
+
+  refinementTarget =
+    undoState.refinementTarget;
+
+
+  // 比較対象復元
+  if (
+    undoState.currentPair
+  ) {
+
+    currentPair = [
+
+      peopleById.get(
+        undoState.currentPair[0]
+      ),
+
+      peopleById.get(
+        undoState.currentPair[1]
+      )
+
+    ];
+
+  } else {
+
+    currentPair = null;
+
+  }
+
+
+  // さらに戻ることはできない
+  undoState =
+    null;
+
+
+  // 保存
+  saveState();
+
+
+  updateUndoButton();
+
+
+  // 比較画面表示
+  if (compareScreen) {
+
+    compareScreen.style.display =
+      "block";
+
+  }
+
+
+  if (resultScreen) {
+
+    resultScreen.style.display =
+      "none";
+
+  }
+
+
+  // 前の比較を表示
+  if (currentPair) {
+
+    setFaceImage(
+      leftImage,
+      currentPair[0]
+    );
+
+
+    setFaceImage(
+      rightImage,
+      currentPair[1]
+    );
+
+
+    updateProgress();
+
+  }
+
+}
+
+
+// ========================================
+// 戻るボタン状態
+// ========================================
+
+function updateUndoButton() {
+
+  if (!undoButton) {
+
+    return;
+
+  }
+
+
+  undoButton.disabled =
+    !undoState;
 
 }
 
@@ -1321,7 +1569,18 @@ function handleChoice(
   }
 
 
-  isProcessing = true;
+  /*
+   * ★重要
+   *
+   * 選択を反映する前に
+   * 現在の状態を保存する
+   */
+
+  saveUndoState();
+
+
+  isProcessing =
+    true;
 
 
   // スコア更新
@@ -1334,7 +1593,7 @@ function handleChoice(
   recordComparison();
 
 
-  // 比較回数を進める
+  // 比較回数
   currentComparison++;
 
 
@@ -1342,7 +1601,6 @@ function handleChoice(
   saveState();
 
 
-  // 少し間を置く
   setTimeout(
     () => {
 
@@ -1350,10 +1608,7 @@ function handleChoice(
         false;
 
 
-      // ==============================
       // 精密比較終了
-      // ==============================
-
       if (
         mode === "refine" &&
         currentComparison >=
@@ -1367,10 +1622,7 @@ function handleChoice(
       }
 
 
-      // ==============================
       // 通常比較終了
-      // ==============================
-
       if (
         mode === "normal" &&
         currentComparison >=
@@ -1408,7 +1660,15 @@ function showResult() {
     null;
 
 
-  // 比較画面を隠す
+  // 戻るボタン無効
+  undoState =
+    null;
+
+
+  updateUndoButton();
+
+
+  // 比較画面非表示
   if (compareScreen) {
 
     compareScreen.style.display =
@@ -1417,7 +1677,7 @@ function showResult() {
   }
 
 
-  // 結果画面を表示
+  // 結果画面表示
   if (resultScreen) {
 
     resultScreen.classList.remove(
@@ -1430,7 +1690,6 @@ function showResult() {
   }
 
 
-  // ランキング
   const ranking =
     getRanking();
 
@@ -1442,10 +1701,7 @@ function showResult() {
     );
 
 
-  // ==============================
-  // TOP9を作る
-  // ==============================
-
+  // TOP9
   if (rankingGrid) {
 
     rankingGrid.innerHTML =
@@ -1520,7 +1776,6 @@ function showResult() {
             person.name;
 
 
-          // カードに追加
           card.appendChild(
             rank
           );
@@ -1544,10 +1799,7 @@ function showResult() {
   }
 
 
-  // ==============================
-  // 結果説明
-  // ==============================
-
+  // 説明
   const resultDescription =
     document.getElementById(
       "resultDescription"
@@ -1556,43 +1808,17 @@ function showResult() {
 
   if (resultDescription) {
 
-    if (
-      currentComparison <=
-      normalTarget
-    ) {
-
-      resultDescription.textContent =
-        `${currentComparison}回の比較結果です。`;
-
-    } else {
-
-      resultDescription.textContent =
-        `${currentComparison}回の比較結果です。`;
-
-    }
+    resultDescription.textContent =
+      `${currentComparison}回の比較結果です。`;
 
   }
 
 
-  // ==============================
-  // 精密比較ボタン
-  // ==============================
-
+  // 精密比較
   if (refineButton) {
 
-    if (
-      ranking.length >= 2
-    ) {
-
-      refineButton.style.display =
-        "block";
-
-    } else {
-
-      refineButton.style.display =
-        "none";
-
-    }
+    refineButton.style.display =
+      "block";
 
 
     if (
@@ -1613,7 +1839,6 @@ function showResult() {
   }
 
 
-  // 保存
   saveState();
 
 }
@@ -1647,20 +1872,20 @@ function startRefinement() {
     REFINE_COMPARISONS;
 
 
-  // 比較画面表示
-  if (compareScreen) {
-
-    compareScreen.style.display =
-      "block";
-
-  }
-
-
-  // 結果画面非表示
+  // 結果画面を隠す
   if (resultScreen) {
 
     resultScreen.style.display =
       "none";
+
+  }
+
+
+  // 比較画面を表示
+  if (compareScreen) {
+
+    compareScreen.style.display =
+      "block";
 
   }
 
@@ -1674,7 +1899,7 @@ function startRefinement() {
 
 
 // ========================================
-// 初期状態作成
+// 初期状態
 // ========================================
 
 function initializeFreshState() {
@@ -1706,16 +1931,17 @@ function initializeFreshState() {
     null;
 
 
+  undoState =
+    null;
+
+
   saveState();
 
 }
 
 
 // ========================================
-// 人物リストの識別
-//
-// CSVを変更した場合に
-// 保存データを無効にする
+// 人物データの識別
 // ========================================
 
 function getPeopleSignature() {
@@ -1731,7 +1957,7 @@ function getPeopleSignature() {
 
 
 // ========================================
-// LocalStorage保存
+// 保存
 // ========================================
 
 function saveState() {
@@ -1790,7 +2016,7 @@ function saveState() {
 
 
 // ========================================
-// LocalStorage読み込み
+// 保存データ読み込み
 // ========================================
 
 function loadState() {
@@ -1814,7 +2040,6 @@ function loadState() {
       JSON.parse(raw);
 
 
-    // バージョン確認
     if (
       data.version !== 4
     ) {
@@ -1824,7 +2049,6 @@ function loadState() {
     }
 
 
-    // CSV確認
     if (
       data.peopleSignature !==
       getPeopleSignature()
@@ -1835,7 +2059,6 @@ function loadState() {
     }
 
 
-    // データ確認
     if (
       !data.scores ||
       !data.comparisonCounts ||
@@ -1896,7 +2119,6 @@ function loadState() {
         : null;
 
 
-    // 全員のスコア確認
     for (
       const person of people
     ) {
@@ -1927,7 +2149,9 @@ function loadState() {
 
     return true;
 
-  } catch (error) {
+  }
+
+  catch (error) {
 
     console.error(
       "保存データの読み込みに失敗しました",
@@ -1943,7 +2167,7 @@ function loadState() {
 
 
 // ========================================
-// 最初からやり直す
+// リセット
 // ========================================
 
 function resetGame() {
@@ -1967,9 +2191,13 @@ function resetGame() {
       STATE_KEY
     );
 
-  } catch (error) {
+  }
 
-    console.error(error);
+  catch (error) {
+
+    console.error(
+      error
+    );
 
   }
 
@@ -1980,7 +2208,7 @@ function resetGame() {
 
 
 // ========================================
-// 人物データ読み込み
+// CSV読み込み
 // ========================================
 
 async function loadPeople() {
@@ -1995,7 +2223,6 @@ async function loadPeople() {
     }
 
 
-    // CSV読み込み
     const response =
       await fetch(
         "./people.csv",
@@ -2018,12 +2245,10 @@ async function loadPeople() {
       await response.text();
 
 
-    // CSV解析
     people =
       parseCSV(text);
 
 
-    // 人数確認
     if (
       people.length < 2
     ) {
@@ -2038,7 +2263,8 @@ async function loadPeople() {
     // ID重複確認
     const ids =
       people.map(
-        person => person.id
+        person =>
+          person.id
       );
 
 
@@ -2058,7 +2284,7 @@ async function loadPeople() {
     }
 
 
-    // 必須項目確認
+    // 必須項目
     for (
       const person of people
     ) {
@@ -2078,7 +2304,7 @@ async function loadPeople() {
     }
 
 
-    // ID → 人物
+    // IDから人物を取得
     peopleById =
       new Map(
         people.map(
@@ -2095,7 +2321,7 @@ async function loadPeople() {
       calculateNormalTarget();
 
 
-    // 保存データ読み込み
+    // 保存データ
     const loaded =
       loadState();
 
@@ -2108,7 +2334,7 @@ async function loadPeople() {
 
 
     // ==============================
-    // 画面状態を復元
+    // 画面復元
     // ==============================
 
     if (
@@ -2216,9 +2442,7 @@ async function loadPeople() {
 
     alert(
       "データの読み込みに失敗しました。\n\n" +
-      error.message +
-      "\n\n" +
-      "ブラウザの開発者ツール（F12）のConsoleにも詳細が出ています。"
+      error.message
     );
 
   }
@@ -2228,8 +2452,6 @@ async function loadPeople() {
 
 // ========================================
 // ボタンイベント
-//
-// ★ここでは const を再宣言しない
 // ========================================
 
 if (leftChoice) {
@@ -2291,6 +2513,17 @@ if (neitherChoice) {
       );
 
     }
+  );
+
+}
+
+
+// ★ひとつ前に戻る
+if (undoButton) {
+
+  undoButton.addEventListener(
+    "click",
+    undoLastChoice
   );
 
 }
