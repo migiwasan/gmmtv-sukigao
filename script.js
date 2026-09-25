@@ -62,11 +62,23 @@ const phaseText = document.getElementById("phaseText");
 
 const rankingGrid = document.getElementById("rankingGrid");
 
-const bothButton = document.getElementById("bothButton");
-const neitherButton = document.getElementById("neitherButton");
+const leftChoice =
+    document.getElementById("leftChoice");
 
-const refineButton = document.getElementById("refineButton");
-const resetButton = document.getElementById("resetButton");
+const rightChoice =
+    document.getElementById("rightChoice");
+
+const bothChoice =
+    document.getElementById("bothChoice");
+
+const neitherChoice =
+    document.getElementById("neitherChoice");
+
+const refineButton =
+    document.getElementById("refineButton");
+
+const resetButton =
+    document.getElementById("resetButton");
 
 
 // ========================================
