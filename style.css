@@ -263,7 +263,7 @@ h1 {
 ======================================== */
 
 .hidden {
-  display: none !important;
+  display: none;
 }
 
 #resultScreen {
