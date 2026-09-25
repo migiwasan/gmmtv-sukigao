@@ -779,14 +779,14 @@ function showResult() {
 
     currentPair = null;
 
-    if (compareScreen) {
-        compareScreen.style.display = "none";
-    }
+if (compareScreen) {
+    compareScreen.style.display = "none";
+}
 
-    if (resultScreen) {
-        resultScreen.style.display = "block";
-    }
-
+if (resultScreen) {
+    resultScreen.classList.remove("hidden");
+    resultScreen.style.display = "block";
+}
 
     const ranking = getRanking();
 
