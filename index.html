@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="ja">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -13,50 +14,108 @@
 
   <main class="container">
 
+    <!-- ==============================
+         ヘッダー
+    ============================== -->
+
     <header>
-      <h1>GMMTV好き顔ソート~mens~</h1>
-      <p id="phaseText">読み込み中…</p>
+
+      <h1>
+        GMMTV好き顔ソート~mens~
+      </h1>
+
+      <p id="phaseText">
+        読み込み中…
+      </p>
+
       <div class="progress">
         <div id="progressBar"></div>
       </div>
+
       <p id="progressText"></p>
+
     </header>
 
 
-    <!-- 比較画面 -->
+    <!-- ==============================
+         比較画面
+    ============================== -->
+
     <section id="compareScreen">
 
       <div class="faces">
 
-        <button class="face-card" id="leftButton">
-          <img id="leftImage" src="" alt="">
+        <!-- 左 -->
+        <button
+          class="face-card"
+          id="leftButton"
+          type="button"
+        >
+          <img
+            id="leftImage"
+            src=""
+            alt=""
+          >
         </button>
 
-        <div class="vs">VS</div>
 
-        <button class="face-card" id="rightButton">
-          <img id="rightImage" src="" alt="">
+        <!-- VS -->
+        <div class="vs">
+          VS
+        </div>
+
+
+        <!-- 右 -->
+        <button
+          class="face-card"
+          id="rightButton"
+          type="button"
+        >
+          <img
+            id="rightImage"
+            src=""
+            alt=""
+          >
         </button>
 
       </div>
 
 
+      <!-- ==============================
+           選択ボタン
+      ============================== -->
+
       <div class="choice-buttons">
 
-        <button id="leftChoice">
+        <button
+          id="leftChoice"
+          type="button"
+        >
           ← 左が好き
         </button>
 
-        <button id="bothChoice">
-          ♡ どっちも好き
-        </button>
 
-        <button id="neitherChoice">
-          × どっちも好きじゃない
-        </button>
-
-        <button id="rightChoice">
+        <button
+          id="rightChoice"
+          type="button"
+        >
           右が好き →
+        </button>
+
+
+        <button
+          id="bothChoice"
+          type="button"
+        >
+          ♡ どちらも好き
+        </button>
+
+
+        <button
+          id="neitherChoice"
+          type="button"
+        >
+          × どちらも好きじゃない
         </button>
 
       </div>
@@ -64,22 +123,40 @@
     </section>
 
 
-    <!-- 結果画面 -->
-    <section id="resultScreen" class="hidden">
+    <!-- ==============================
+         結果画面
+    ============================== -->
 
-      <h2 id="resultTitle">あなたの好き顔 TOP9</h2>
+    <section
+      id="resultScreen"
+      class="hidden"
+    >
+
+      <h2 id="resultTitle">
+        あなたの好き顔 TOP9
+      </h2>
 
       <p id="resultDescription"></p>
 
       <div id="rankingGrid"></div>
 
+
       <div class="result-buttons">
 
-        <button id="refineButton" class="main-button">
+        <button
+          id="refineButton"
+          class="main-button"
+          type="button"
+        >
           TOP9をもっと厳密にする（＋30回）
         </button>
 
-        <button id="resetButton" class="sub-button">
+
+        <button
+          id="resetButton"
+          class="sub-button"
+          type="button"
+        >
           最初からやり直す
         </button>
 
@@ -90,7 +167,13 @@
   </main>
 
 
-<script src="script.js?v=3"></script>
+  <!-- ==============================
+       JavaScript
+       v4にしてキャッシュを更新
+  ============================== -->
+
+  <script src="script.js?v=4"></script>
 
 </body>
+
 </html>
